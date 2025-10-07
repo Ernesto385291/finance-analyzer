@@ -300,10 +300,6 @@ function ChatInputBar({
                 <PromptInputActionAddAttachments />
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
-            <PromptInputSpeechButton
-              onTranscriptionChange={setText}
-              textareaRef={textareaRef}
-            />
             <PromptInputButton>
               <GlobeIcon size={16} />
               <span>Search</span>
