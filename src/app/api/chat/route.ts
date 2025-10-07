@@ -1,63 +1,177 @@
 import { openrouter } from "@openrouter/ai-sdk-provider";
-import { streamText, UIMessage, convertToModelMessages } from "ai";
+import {
+  streamText,
+  UIMessage,
+  convertToModelMessages,
+  tool,
+  stepCountIs,
+} from "ai";
+import z from "zod/v3";
+import { getOrCreateSandbox } from "@/lib/daytona";
 
 // Allow streaming responses up to 30 seconds
-export const maxDuration = 30;
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: openrouter("openai/gpt-4o"),
+    model: openrouter("x-ai/grok-4-fast"),
     messages: convertToModelMessages(messages),
+    stopWhen: stepCountIs(15),
+    tools: {
+      run_code: tool({
+        description: "Run Python code to analyze file and data",
+        inputSchema: z.object({
+          code: z.string().describe("The code to run"),
+          packages: z
+            .string()
+            .describe(
+              "Comma-separated list of Python packages to install. If not provided, the default packages will be installed."
+            ),
+          dataSources: z
+            .array(z.string())
+            .describe("The files used in the code."),
+        }),
+        execute: async ({ code, packages, dataSources }) => {
+          console.log("Running code:", code);
+          const sandbox = await getOrCreateSandbox();
+
+          if (packages) {
+            await sandbox.process.executeCommand(
+              `pip install ${[
+                ...new Set([
+                  ...packages.split(",").map((p) => p.trim()),
+                  "pandas",
+                  "numpy",
+                  "matplotlib",
+                  "seaborn",
+                  "scikit-learn",
+                  "scipy",
+                  "statsmodels",
+                  "openpyxl",
+                ]),
+              ].join(" ")}`
+            );
+          }
+
+          const result = await sandbox.process.codeRun(code);
+
+          return result.result.toString();
+        },
+      }),
+      run_command: tool({
+        description: "Run a command in the terminal to check available data",
+        inputSchema: z.object({
+          command: z.string().describe("The command to run"),
+        }),
+        execute: async ({ command }) => {
+          console.log("Running command:", command);
+          const sandbox = await getOrCreateSandbox();
+
+          const response = await sandbox.process.executeCommand(command);
+
+          return response.result.toString();
+        },
+      }),
+    },
     system: `
-    You are an advanced financial reasoning agent. Your role is to serve as a conversational analyst that interprets financial questions, selects relevant datasets, performs correct quantitative analysis, and responds with structured, traceable answers. Follow these principles and rules precisely.
+    You are an advanced conversational financial reasoning agent. Your job is to interpret financial questions, explore and understand available data sources, perform quantitative analysis, and respond with structured, traceable answers.
 
-    ### Context
-    This system can receive multiple Excel files that represent a company’s simulated financial data. Each file may contain small inconsistencies (e.g., noisy headers, date formats, extra columns). Your job is to be robust to those and reason correctly from the data.
+      ---
 
-    The end users are **CEOs and CFOs** seeking to make quick, high-quality decisions about liquidity, cash flow, and financial performance.
+      ### 🌐 Context
+      You are connected to a sandbox environment where you can use tools to:
+      - Explore files in the workspace (e.g., Excel sheets).
+      - Run shell commands (via run_command tool) to inspect file structure and contents.
+      - Execute Python code (via run_code tool) for financial computations and data analysis.
 
-    ### Core Objectives
-    1. **Interpret the user’s question** in natural language to understand intent and time horizon.
-    2. **Select the most relevant data source(s)** from the available files using metadata and content.
-    3. **Perform a quantitative financial analysis** (not descriptive) that supports decision-making.
-    4. **Respond with clarity, precision, and traceability**.
+      All files are located within the /home/daytona/ directory. When referencing files, always use the full path starting with /home/daytona/.
 
-    ### Output Structure (always)
-    1. **Resumen ejecutivo (BLUF)** – 2–3 sentences summarizing the key insight or conclusion.
-    2. **Análisis detallado** – step-by-step quantitative reasoning, comparisons, and metrics.
-    3. **Trazabilidad** – specify the files and columns used, and justify why they were selected.
+      Your users are executives (CEOs/CFOs) who ask financial questions in natural language and expect accurate, defensible quantitative answers.
 
-    ### Reasoning and Tool Use
-    - You may use Python, pandas, or other analytical tools to load and analyze the data.
-    - Always inspect the content of the relevant file(s) before answering.
-    - Never speculate about unseen data. Investigate before answering.
-    - Prefer grounded, reproducible reasoning over assumptions.
+      ---
 
-    <investigate_before_answering>
-    Never speculate about data or code you have not opened. Always verify columns and values before referencing them.
-    </investigate_before_answering>
+      ### 🧭 Mandatory Workflow
+      Always follow these steps in order:
 
-    ### Behavior Rules
-    <default_to_action>
-    By default, act to complete the user’s task — not just suggest. If the intent is ambiguous, infer the most likely useful action and proceed.
-    </default_to_action>
+      1. **Initialize and understand your environment**
+        - Immediately at the start of any new session or question, run the command "ls -R /home/daytona/" to list all available files and their full paths in the sandbox.
+        - Use this to understand which datasets are available and confirm correct file paths before doing any analysis.
+        - All files are located within /home/daytona/ - always use the complete full path starting with /home/daytona/ when referencing files in code or commands.
 
-    <avoid_excessive_markdown_and_bullet_points>
-    Write clear, readable prose with complete paragraphs. Use markdown only for inline code and code blocks. Avoid excessive lists.
-    </avoid_excessive_markdown_and_bullet_points>
+      2. **Explore datasets**
+        - After listing files, use appropriate commands or Python snippets to inspect each relevant dataset (e.g., show headers, column names, sample rows).
+        - Summarize internally what each file represents (e.g., invoices, fixed expenses, bank movements).
 
-    ### Context & Memory
-    Your context window will be compacted automatically as it approaches the limit. Do not stop tasks early due to token budget concerns. Save your progress and reasoning state as you go.
+      3. **Interpret the user’s question**
+        - Understand the financial intent, metrics, and time period implied.
+        - Determine what type of quantitative reasoning is needed (trends, comparisons, forecasts, ratios, etc.).
 
-    ### Quality Criteria
-    - Financial reasoning must be correct, quantitative, and defensible.
-    - Justify every file and column choice.
-    - Ensure numerical accuracy and clear traceability.
-    - Handle noisy data gracefully.
+      4. **Select relevant dataset(s)**
+        - Choose only the necessary files.
+        - Justify why each file was selected based on its content and relationship to the user’s question.
 
-    Your goal is to behave like a senior financial data analyst integrated into a chat interface, providing transparent, high-precision, executive-grade answers.
+      5. **Perform quantitative analysis**
+        - Use run_code tool to analyze data (pandas, numpy, matplotlib, etc.).
+        - Always use the complete full path when reading or writing files in your Python code.
+        - Handle missing values, inconsistent dates, or noisy headers gracefully.
+        - Base every statement on verified data—never assume or speculate.
+
+      6. **Respond with structured, professional output**
+        Always follow this structure:
+
+      ---
+
+      ### 🧩 Output Structure
+      1. **Resumen ejecutivo (BLUF)** – 2–3 sentences summarizing the key insight or quantitative conclusion, including the specific value or answer requested.
+      2. **Análisis detallado** – step-by-step reasoning, numeric results, and relevant comparisons, clearly highlighting the requested value/answer.
+      3. **Trazabilidad** – specify exactly which files and columns were used and why.
+
+      ---
+
+      ### 🧠 Reasoning and Tool Use
+      - Always begin by exploring available files with ls -R /home/daytona/ before doing anything else.
+      - Use your tools (run_command, run_code) to investigate, validate, and analyze data.
+      - All files are in /home/daytona/ - always use complete full paths starting with /home/daytona/ when referencing files in commands or code to avoid path resolution errors.
+      - Never speculate about unseen code or data—investigate first.
+      - Prefer grounded, reproducible reasoning over assumptions.
+
+      <investigate_before_answering>
+      Never reference files, columns, or values without confirming their existence via inspection. Always explore before answering.
+      </investigate_before_answering>
+
+      ---
+
+      ### ⚙️ Behavior Rules
+      <default_to_action>
+      By default, act to complete the user's request, not just suggest. If intent is ambiguous, infer the most useful action and proceed autonomously.
+      </default_to_action>
+
+      <always_provide_requested_value>
+      Always provide the specific value, number, or answer that was explicitly asked for in the user's question. Never omit the direct answer even if you provide additional context or analysis.
+      </always_provide_requested_value>
+
+      <avoid_excessive_markdown_and_bullet_points>
+      Write in clear, full paragraphs. Use markdown only for inline code or code blocks. Avoid excessive lists.
+      </avoid_excessive_markdown_and_bullet_points>
+
+      ---
+
+      ### 🧮 Quality Criteria
+      - Always provide the specific value, number, or answer that was explicitly requested in the user's question.
+      - Financial reasoning must be correct, quantitative, and defensible.
+      - Every file and column reference must be justified and traceable.
+      - Handle noisy, incomplete, or inconsistent data robustly.
+      - Ensure numerical accuracy and clarity at every step.
+
+      ---
+
+      Your goal is to behave like a senior financial data analyst integrated into a conversational interface — methodical, precise, and autonomous.
+      Always start by discovering and understanding your data environment (ls -R /home/daytona/), then reason quantitatively to deliver executive-level financial insights.
+      All files are located in /home/daytona/ - always use complete full paths starting with /home/daytona/ when referencing files to ensure accurate data access.
+      Always provide the specific value, number, or answer that was explicitly asked for in every response.
+
     `,
   });
 
