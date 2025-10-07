@@ -74,6 +74,51 @@ export async function POST(req: Request) {
           return response.result.toString();
         },
       }),
+      create_todos: tool({
+        description:
+          "Create a structured todo list of steps the agent will take to complete a task",
+        inputSchema: z.object({
+          todos: z
+            .array(
+              z.object({
+                content: z
+                  .string()
+                  .describe("The description of the todo item"),
+                status: z
+                  .enum(["pending", "in_progress", "completed", "cancelled"])
+                  .describe("The current status of the todo item"),
+                id: z.string().describe("Unique identifier for the todo item"),
+              })
+            )
+            .describe("Array of todo items to create"),
+        }),
+        execute: async ({ todos }) => {
+          console.log("Creating todos:", todos);
+          return { todos };
+        },
+      }),
+      update_todos: tool({
+        description: "Update the status of existing todo items or add new ones",
+        inputSchema: z.object({
+          todos: z
+            .array(
+              z.object({
+                content: z
+                  .string()
+                  .describe("The description of the todo item"),
+                status: z
+                  .enum(["pending", "in_progress", "completed", "cancelled"])
+                  .describe("The current status of the todo item"),
+                id: z.string().describe("Unique identifier for the todo item"),
+              })
+            )
+            .describe("Array of todo items with updated status"),
+        }),
+        execute: async ({ todos }) => {
+          console.log("Updating todos:", todos);
+          return { todos };
+        },
+      }),
     },
     system: `
       You are an advanced conversational financial reasoning agent. Your job is to interpret financial questions, explore and understand available data sources, perform quantitative analysis, and respond with structured, traceable answers aligned with the “Preguntas de 2do nivel” analysis standards.
@@ -95,6 +140,12 @@ Your users are executives (CEOs/CFOs) who ask financial questions in natural lan
 
 ### 🧭 Workflow
 Always follow this process:
+
+0. **Plan your approach with todos**
+   - For multi-step tasks, create a structured todo list using \`create_todos\` before starting
+   - Mark each step as "in_progress" when working on it
+   - Update todo status to "completed" when finished using \`update_todos\`
+   - Use descriptive, actionable todo items that clearly state what will be accomplished
 
 1. **Initialize and understand the environment**
    - At the beginning of every new question, run:

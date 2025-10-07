@@ -25,7 +25,8 @@ import type { UIMessage, FileUIPart } from "ai";
 import { useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import { CodeIcon, Settings, TerminalIcon } from "lucide-react";
+import { CodeIcon, Settings, TerminalIcon, ListTodoIcon } from "lucide-react";
+import { TodoList } from "@/components/ai-elements/todo-list";
 
 const Page = () => {
   const { messages, sendMessage, status } = useChat({
@@ -153,6 +154,58 @@ const Page = () => {
                                     >
                                       <TerminalIcon className="h-4 w-4" />
                                       Executed command...
+                                    </div>
+                                  );
+                              }
+                            case "tool-create_todos":
+                              switch (part.state) {
+                                case "input-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                      className="flex items-center gap-2 w-fit text-xs text-muted-foreground"
+                                    >
+                                      <ListTodoIcon className="h-4 w-4" />
+                                      Creating todo list...
+                                    </div>
+                                  );
+                                case "output-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                    >
+                                      <TodoList
+                                        todos={
+                                          (part.output as any)?.todos || []
+                                        }
+                                        title="Agent Task List"
+                                      />
+                                    </div>
+                                  );
+                              }
+                            case "tool-update_todos":
+                              switch (part.state) {
+                                case "input-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                      className="flex items-center gap-2 w-fit text-xs text-muted-foreground"
+                                    >
+                                      <ListTodoIcon className="h-4 w-4" />
+                                      Updating todo list...
+                                    </div>
+                                  );
+                                case "output-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                    >
+                                      <TodoList
+                                        todos={
+                                          (part.output as any)?.todos || []
+                                        }
+                                        title="Updated Task List"
+                                      />
                                     </div>
                                   );
                               }
