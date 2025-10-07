@@ -128,6 +128,32 @@ export async function POST(req: Request) {
       2. **Análisis detallado** – step-by-step reasoning, numeric results, and relevant comparisons, clearly highlighting the requested value/answer.
       3. **Trazabilidad** – specify exactly which files and columns were used and why.
 
+      ### 📊 Data Presentation Guidelines
+      Use tables for better representation when:
+      - **Comparisons**: Comparing multiple time periods, categories, or entities
+      - **Breakdowns**: Showing detailed breakdowns of totals (e.g., expenses by category, revenue by product)
+      - **Time series**: Displaying trends over time with multiple metrics
+      - **Detailed listings**: Presenting lists with multiple attributes (e.g., transaction details, account summaries)
+      - **Financial statements**: Balance sheets, income statements, or cash flow summaries
+      - **Calculations**: Showing step-by-step financial calculations or ratios
+
+      Table formatting guidelines:
+      - Use clear, descriptive headers
+      - Include appropriate units/currency symbols
+      - Format numbers consistently (e.g., $1,234.56 or $1,234)
+      - Add totals/summaries where relevant
+      - Keep tables concise but comprehensive
+      - Use markdown table syntax for proper formatting
+
+      Example table for expense breakdown:
+      | Category | Amount | Percentage |
+      |----------|--------|------------|
+      | Salaries | $45,230 | 35.2% |
+      | Marketing | $28,450 | 22.1% |
+      | Operations | $32,180 | 25.0% |
+      | Other | $22,890 | 17.8% |
+      | **Total** | **$128,750** | **100.0%** |
+
       ---
 
       ### 🧠 Reasoning and Tool Use
@@ -152,9 +178,9 @@ export async function POST(req: Request) {
       Always provide the specific value, number, or answer that was explicitly asked for in the user's question. Never omit the direct answer even if you provide additional context or analysis.
       </always_provide_requested_value>
 
-      <avoid_excessive_markdown_and_bullet_points>
-      Write in clear, full paragraphs. Use markdown only for inline code or code blocks. Avoid excessive lists.
-      </avoid_excessive_markdown_and_bullet_points>
+      <data_presentation_priority>
+      Prioritize data clarity over writing style. Use tables, lists, and markdown formatting when they improve comprehension of financial data. Write in clear paragraphs but don't avoid helpful formatting.
+      </data_presentation_priority>
 
       ---
 

@@ -20,12 +20,12 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { Response } from "@/components/ai-elements/response";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { UIMessage, FileUIPart } from "ai";
 import { useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import { CodeIcon, TerminalIcon } from "lucide-react";
+import { CodeIcon, Settings, TerminalIcon } from "lucide-react";
 
 const Page = () => {
   const { messages, sendMessage, status } = useChat({
@@ -35,9 +35,17 @@ const Page = () => {
   });
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const uploadFiles = useAction(api.mutations.uploadFiles);
 
   const hasMessages = messages.length > 0;
+
+  // Autoscroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     if (status !== "ready") return;
@@ -102,25 +110,52 @@ const Page = () => {
                                 <Response key={part.type}>{part.text}</Response>
                               );
                             case "tool-run_code":
-                              return (
-                                <div
-                                  key={part.type}
-                                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                                >
-                                  <CodeIcon className="h-4 w-4" />
-                                  Running code analysis...
-                                </div>
-                              );
+                              switch (part.state) {
+                                case "input-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                      className="flex items-center gap-2 w-fit text-xs text-muted-foreground"
+                                    >
+                                      <Settings className="h-4 w-4 animate-spin" />
+                                      Running code analysis...
+                                    </div>
+                                  );
+                                case "output-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                      className="flex items-center gap-2 w-fit text-xs text-muted-foreground"
+                                    >
+                                      <Settings className="h-4 w-4" />
+                                      Runned code analysis...
+                                    </div>
+                                  );
+                              }
+
                             case "tool-run_command":
-                              return (
-                                <div
-                                  key={part.type}
-                                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                                >
-                                  <TerminalIcon className="h-4 w-4" />
-                                  Executing command...
-                                </div>
-                              );
+                              switch (part.state) {
+                                case "input-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                      className="flex items-center gap-2 w-fit text-xs text-muted-foreground"
+                                    >
+                                      <TerminalIcon className="h-4 w-4" />
+                                      Executing command...
+                                    </div>
+                                  );
+                                case "output-available":
+                                  return (
+                                    <div
+                                      key={`${part.type}-${part.toolCallId}`}
+                                      className="flex items-center gap-2 w-fit text-xs text-muted-foreground"
+                                    >
+                                      <TerminalIcon className="h-4 w-4" />
+                                      Executed command...
+                                    </div>
+                                  );
+                              }
                             default:
                               return null;
                           }
@@ -130,6 +165,7 @@ const Page = () => {
                   </Message>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
           </motion.div>
         ) : (
