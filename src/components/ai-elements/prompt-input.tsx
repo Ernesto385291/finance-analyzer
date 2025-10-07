@@ -120,7 +120,7 @@ export const useProviderAttachments = () => {
   return ctx;
 };
 
-const optional_useProviderAttachments = () => {
+const useOptionalProviderAttachments = () => {
   return useContext(ProviderAttachmentsContext);
 };
 
@@ -233,7 +233,7 @@ const LocalAttachmentsContext = createContext<AttachmentsContext | null>(null);
 
 export const usePromptInputAttachments = () => {
   // Dual-mode: prefer provider if present, otherwise use local
-  const provider = optional_useProviderAttachments();
+  const provider = useOptionalProviderAttachments();
   const local = useContext(LocalAttachmentsContext);
   const context = provider ?? local;
   if (!context) {
