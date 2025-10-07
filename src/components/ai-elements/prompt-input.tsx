@@ -262,7 +262,7 @@ export function PromptInputAttachment({
   return (
     <div
       className={cn(
-        "group relative h-14 w-14 rounded-md border",
+        "group relative h-14 w-14 rounded-xl border",
         className,
         mediaType === "image" ? "h-14 w-14" : "h-8 w-auto max-w-full"
       )}
@@ -272,7 +272,7 @@ export function PromptInputAttachment({
       {mediaType === "image" ? (
         <img
           alt={data.filename || "attachment"}
-          className="size-full rounded-md object-cover"
+          className="size-full rounded-xl object-cover"
           height={56}
           src={data.url}
           width={56}

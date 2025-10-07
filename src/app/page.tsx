@@ -1,98 +1,92 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
-  ChatHeaderActions,
   ChatThread,
   ChatMessage,
-  ChatTable,
   ChatInputBar,
   type ChatMessageData,
-} from '@/components/ui/chat';
+} from "@/components/chat";
 
 const Page = () => {
-  const [messages, setMessages] = useState<ChatMessageData[]>([
-    {
-      id: 'm1',
-      role: 'user',
-      name: 'You',
-      avatarUrl: 'https://github.com/haydenbleasel.png',
-      content: 'What are the best open opportunities by company size?',
-    },
-    {
-      id: 'm2',
-      role: 'assistant',
-      name: 'Orbita GPT',
-      avatarUrl: 'https://github.com/openai.png',
-      content: (
-        <div className="space-y-3">
-          <div className="text-muted-foreground text-sm">
-            Here's a detailed breakdown of the best opportunities by company size:
-          </div>
-          <ChatTable
-            columns={["Company Size", "Best Opportunities"]}
-            rows={[
-              [
-                'Startup (1-50 Employees)',
-                (
-                  <ul className="list-disc pl-5">
-                    <li>Flexible roles across functions</li>
-                    <li>Equity or stock ownership</li>
-                    <li>Rapid career growth opportunities</li>
-                  </ul>
-                ),
-              ],
-              [
-                'Small Business (51-200 Employees)',
-                (
-                  <ul className="list-disc pl-5">
-                    <li>Greater responsibility than large companies</li>
-                    <li>Ability to shape business strategies</li>
-                    <li>Faster advancement potential</li>
-                  </ul>
-                ),
-              ],
-              ['Mid-Sized Co', <span />],
-            ]}
-          />
-        </div>
-      ),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessageData[]>([]);
 
   const handleSend = (text: string) => {
     setMessages((prev) => [
       ...prev,
       {
         id: `u-${Date.now()}`,
-        role: 'user',
-        name: 'You',
-        avatarUrl: 'https://github.com/haydenbleasel.png',
+        role: "user",
+        name: "You",
         content: text,
       },
     ]);
   };
 
+  const hasMessages = messages.length > 0;
+
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 px-4 pb-4 pt-2 md:px-6">
-      <div className="flex items-center justify-end">
-        <ChatHeaderActions />
-      </div>
-      <div className="flex-1 min-h-0">
-        <ChatThread>
-          {messages.map((m) => (
-            <ChatMessage
-              key={m.id}
-              role={m.role}
-              name={m.name}
-              avatarUrl={m.avatarUrl}
-            >
-              {m.content}
-            </ChatMessage>
-          ))}
-        </ChatThread>
-      </div>
-      <ChatInputBar onSend={handleSend} />
+    <div className="flex flex-1 overscroll-behavior-contain h-full min-w-0 touch-pan-y flex-col gap-4 px-4 pb-4 pt-2 md:px-6 mx-auto max-w-4xl">
+      <AnimatePresence mode="wait">
+        {hasMessages ? (
+          <motion.div
+            key="with-messages"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 min-h-0"
+          >
+            <ChatThread>
+              {messages.map((m) => (
+                <ChatMessage key={m.id} role={m.role} name={m.name}>
+                  {m.content}
+                </ChatMessage>
+              ))}
+            </ChatThread>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="no-messages"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex items-center justify-center"
+          >
+            <div className="w-full flex flex-col space-y-6">
+              <div className="text-2xl text-center text-zinc-500">
+                Ask about your finances
+              </div>
+              <motion.div
+                layout
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+                className="w-full"
+              >
+                <ChatInputBar onSend={handleSend} className="w-full" />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {hasMessages && (
+        <motion.div
+          layout
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 30,
+          }}
+        >
+          <ChatInputBar onSend={handleSend} className="w-full" />
+        </motion.div>
+      )}
     </div>
   );
 };

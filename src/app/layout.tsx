@@ -38,7 +38,7 @@ export default function RootLayout({
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset className="bg-[#f4f4f4]">
-              <div className="bg-white rounded-tl-2xl border-l border-2 flex-1 h-full min-h-0 p-2">
+              <div className="bg-white rounded-tl-2xl border-l border-2 flex-1 h-full min-h-0 overflow-hidden">
                 {children}
               </div>
             </SidebarInset>
